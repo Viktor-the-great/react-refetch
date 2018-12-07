@@ -67,7 +67,6 @@ const omitChildren = function omitChildren(obj) {
 function connect(mapPropsToRequestsToProps, defaults, options) {
   const finalMapPropsToRequestsToProps = mapPropsToRequestsToProps || defaultMapPropsToRequestsToProps
   const dependsOnProps = finalMapPropsToRequestsToProps.length >= 1
-  const dependsOnContext = finalMapPropsToRequestsToProps.length == 2
 
   let topFetch
   let topRequest
@@ -192,8 +191,8 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
 
   return function wrapWithConnect(WrappedComponent) {
     class RefetchConnect extends Component {
-      constructor(props, context) {
-        super(props, context)
+      constructor(props) {
+        super(props)
         this.version = version
         this.state = { mappings: {}, startedAts: {}, data: {}, refreshTimeouts: {} }
       }
@@ -202,19 +201,17 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
         this.refetchDataFromProps()
       }
 
-      componentWillReceiveProps(nextProps, nextContext) {
+      componentWillReceiveProps(nextProps) {
         if (
           !options.pure ||
-          (dependsOnProps && !shallowEqual(omitChildren(this.props), omitChildren(nextProps))) ||
-          (dependsOnContext && !shallowEqual(this.context, nextContext))
-        ) {
-          this.refetchDataFromProps(nextProps, nextContext)
+          (dependsOnProps && !shallowEqual(omitChildren(this.props), omitChildren(nextProps)))) {
+          this.refetchDataFromProps(nextProps)
         }
       }
 
       shouldComponentUpdate(nextProps, nextState) {
         return !options.pure ||
-          this.state.data != nextState.data || !shallowEqual(this.props, nextProps)
+          this.state.data !== nextState.data || !shallowEqual(this.props, nextProps)
       }
 
       componentWillUnmount() {
@@ -237,8 +234,8 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
         return this.refs.wrappedInstance
       }
 
-      refetchDataFromProps(props = this.props, context = this.context) {
-        this.refetchDataFromMappings(finalMapPropsToRequestsToProps(omitChildren(props), context) || {})
+      refetchDataFromProps(props = this.props) {
+        this.refetchDataFromMappings(finalMapPropsToRequestsToProps(omitChildren(props)) || {})
       }
 
       refetchDataFromMappings(mappings) {
@@ -412,10 +409,6 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
 
     RefetchConnect.displayName = `Refetch.connect(${getDisplayName(WrappedComponent)})`
     RefetchConnect.WrappedComponent = WrappedComponent
-
-    if (dependsOnContext && WrappedComponent.contextTypes) {
-      RefetchConnect.contextTypes = WrappedComponent.contextTypes
-    }
 
     if (process.env.NODE_ENV !== 'production') {
       RefetchConnect.prototype.componentWillUpdate = function componentWillUpdate() {

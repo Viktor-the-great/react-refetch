@@ -64,6 +64,7 @@
   "dependencies": {
     "hoist-non-react-statics": "^2.2.1",
     "invariant": "^2.0.0",
+    "prop-types": "^15.6.2",
     "warning": "^3.0.0"
   },
   "peerDependencies": {
