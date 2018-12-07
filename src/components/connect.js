@@ -71,14 +71,26 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
   let topFetch
   let topRequest
   if (typeof window !== 'undefined') {
-    if (window.fetch) { topFetch = window.fetch.bind(window) }
-    if (window.Request) { topRequest = window.Request.bind(window) }
+    if (window.fetch) {
+      topFetch = window.fetch.bind(window)
+    }
+    if (window.Request) {
+      topRequest = window.Request.bind(window)
+    }
   } else if (typeof global !== 'undefined') {
-    if (global.fetch) { topFetch = global.fetch.bind(global) }
-    if (global.Request) { topRequest = global.Request.bind(global) }
+    if (global.fetch) {
+      topFetch = global.fetch.bind(global)
+    }
+    if (global.Request) {
+      topRequest = global.Request.bind(global)
+    }
   } else if (typeof self !== 'undefined') {
-    if (self.fetch) { topFetch = self.fetch.bind(self) }
-    if (self.Request) { topRequest = self.Request.bind(self) }
+    if (self.fetch) {
+      topFetch = self.fetch.bind(self)
+    }
+    if (self.Request) {
+      topRequest = self.Request.bind(self)
+    }
   }
 
   defaults = Object.assign({
@@ -150,7 +162,7 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
         return this.comparison === that.comparison
       }
 
-      return [ 'value', 'url', 'method', 'headers', 'body' ].every((c) => {
+      return ['value', 'url', 'method', 'headers', 'body'].every((c) => {
         return shallowEqual(this[c], that[c])
       })
     }.bind(mapping)
@@ -192,20 +204,39 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
   return function wrapWithConnect(WrappedComponent) {
     class RefetchConnect extends Component {
       constructor(props) {
-        super(props)
-        this.version = version
-        this.state = { mappings: {}, startedAts: {}, data: {}, refreshTimeouts: {} }
+        super(props);
+        this.version = version;
+        this.state = {
+          mappings: {},
+          startedAts: {},
+          data: this.getDataState(props),
+          refreshTimeouts: {}
+        }
       }
 
-      componentWillMount() {
+      getDataState = (props) => {
+        const mappings = coerceMappings(finalMapPropsToRequestsToProps(omitChildren(props)));
+
+        return Object.keys(mappings).reduce((res, key) => {
+          const mapping = mappings[key];
+
+          const isProtoOf = Function.prototype.isPrototypeOf(mapping);
+
+          res[key] = isProtoOf ? ((...args) => {
+            this.refetchDataFromMappings(mapping(...args))
+          }) : PromiseState.create(mapping.meta);
+
+          return res;
+        }, {})
+      }
+
+      componentDidMount() {
         this.refetchDataFromProps()
       }
 
-      componentWillReceiveProps(nextProps) {
-        if (
-          !options.pure ||
-          (dependsOnProps && !shallowEqual(omitChildren(this.props), omitChildren(nextProps)))) {
-          this.refetchDataFromProps(nextProps)
+      componentDidUpdate(prevProps) {
+        if (!shallowEqual(omitChildren(this.props), omitChildren(prevProps))) {
+          this.refetchDataFromProps(this.props)
         }
       }
 
@@ -215,14 +246,14 @@ function connect(mapPropsToRequestsToProps, defaults, options) {
       }
 
       componentWillUnmount() {
-        this.clearAllRefreshTimeouts()
+        this.clearAllRefreshTimeouts();
         this._unmounted = true
       }
 
       render() {
         const ref = options.withRef ? 'wrappedInstance' : null
         return (
-          <WrappedComponent { ...this.state.data } { ...this.props } ref={ref}/>
+          <WrappedComponent {...this.state.data} {...this.props} ref={ref} />
         )
       }
 
